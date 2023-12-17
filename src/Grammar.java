@@ -20,6 +20,8 @@ public class Grammar {
             String tmp;
             while ((tmp = bufferedReader.readLine()) != null) {
                 String[] parts = tmp.split("->");
+                parts[0] = parts[0].strip();
+                parts[1] = parts[1].strip();
                 if (parts.length != 2) {
                     throw new IOException("invalid file format");
                 }
