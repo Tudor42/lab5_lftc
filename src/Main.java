@@ -9,10 +9,8 @@ public class Main {
     public static void main(String[] args) {
         Grammar.parse_file("grammar");
         Grammar.transitions.put("augmented_grammar_start_var", List.of(Grammar.start));
-        List<State> states = states();
-        for(int i = 0; i < textToParse.length(); ++i){
-            System.out.println(textToParse.charAt(i));
-        }
+        first("R").forEach(System.out::println);
+
     }
 
     private static List<State> states() {
@@ -83,7 +81,7 @@ public class Main {
     }
 
 
-    private static Map<String, Set<String>> first;
+    private static Map<String, Set<String>> first = new HashMap<>();
 
     static class FunctionState{
         public Set<String> res;
@@ -101,10 +99,9 @@ public class Main {
         }
 
         Stack<FunctionState> functionStates = new Stack<>();
-
+        int i = 0;
+        Set<String> res = new HashSet<>();
         while(true) {
-            int i = 0;
-            Set<String> res = new HashSet<>();
             startFunc: while(i < Grammar.transitions.get(symbol).size()){
                 String transition = Grammar.transitions.get(symbol).get(i);
                 if(transition.isEmpty()){
@@ -134,11 +131,16 @@ public class Main {
                         }
                     }
                 }
-                // Add to first
-                // restore func state if present in stack
-                // continue to startFunc tag
-
+                i++;
             }
+            first.put(symbol, res);
+            if(functionStates.isEmpty()){
+                return res;
+            }
+            FunctionState f = functionStates.pop();
+            res = f.res;
+            i = f.currTransaction;
+            symbol = f.symbol;
         }
     }
 }
