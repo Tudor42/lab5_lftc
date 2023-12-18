@@ -168,13 +168,11 @@ public class Main {
                 for (State state : states) {
                     if (state.items.containsAll(nextState.items) && nextState.items.containsAll(state.items)) {
                         exists = true;
-
                         states.get(i).transitions.put(s, state);
                     }
                 }
                 if (!exists) {
                     states.add(nextState);
-
                     states.get(i).transitions.put(s, nextState);
                 }
             }
