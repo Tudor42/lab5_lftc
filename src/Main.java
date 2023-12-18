@@ -1,18 +1,59 @@
 import utils.Item;
 
 import java.util.*;
-import java.util.regex.Pattern;
 
 import utils.*;
 
 public class Main {
     static String textToParse = "asad21$";
+    private static final Map<String, Set<String>> follow = new HashMap<>();
 
     public static void main(String[] args) {
         Grammar.parse_file("grammar");
-        Grammar.transitions.put("augmented_grammar_start_var", List.of(Grammar.start));
-        first("R").forEach(System.out::println);
+        Grammar.transitions.put("augmented_grammar_start_var", List.of(Grammar.start + "$"));
+        Grammar.terminals.add('$');
         calcFollow();
+
+        List<State> states = states();
+        List<Map<String, Action>> actionTable = new ArrayList<>();
+        List<Map<String, Integer>> goTo = new ArrayList<>();
+        for(State s: states){
+            Map<String, Action> newLine = new HashMap<>();
+            Map<String, Integer> goToLine = new HashMap<>();
+            for(Item item: s.items){
+                if(item.dotPosition == item.to.length()){ // reduce
+                    if (item.to.equals(Grammar.start + "$") && item.nonTerminal.equals("augmented_grammar_start_var")){
+                        Action action = new Action();
+                        action.to = item.to;
+                        action.from = item.nonTerminal;
+                        action.actionType = Action.ActionType.ACCEPT;
+                    }
+                    for(String followItem: follow.get(item.nonTerminal)) {
+                        Action action = new Action();
+                        action.to = item.to;
+                        action.from = item.nonTerminal;
+                        action.actionType = Action.ActionType.REDUCE;
+                        if(newLine.put(followItem, action) != null){
+                            throw new RuntimeException("Reduce/reduce conflict");
+                        }
+                    }
+                }
+            }
+            for(String use: s.transitions.keySet()){
+                if(Grammar.terminals.contains(use.charAt(0))){
+                    Action action = new Action();
+                    action.index = states.indexOf(s.transitions.get(use));
+                    action.actionType = Action.ActionType.SHIFT;
+                    if(newLine.put(use, action) != null){
+                        throw new RuntimeException("Reduce/shift conflict");
+                    }
+                }else{
+                    goToLine.put(use, states.indexOf(s.transitions.get(use)));
+                }
+            }
+            actionTable.add(newLine);
+            goTo.add(goToLine);
+        }
     }
 
     private static List<State> states() {
@@ -82,18 +123,17 @@ public class Main {
         return states;
     }
 
-
-    private static Map<String, Set<String>> first = new HashMap<>();
+    private static final Map<String, Set<String>> first = new HashMap<>();
 
     static class FunctionState{
         public Set<String> res;
         public String symbol;
-        public Integer currTransaction;
+        public Integer currTransition;
     }
 
     private static Set<String> first(String symbol){
         if(Grammar.terminals.contains(symbol.charAt(0))){
-            return Set.of(symbol);
+            return new HashSet<>(Set.of(symbol));
         }
 
         if (first.containsKey(symbol)) {
@@ -123,7 +163,7 @@ public class Main {
                         }else{
                             FunctionState func = new FunctionState();
                             func.res = res;
-                            func.currTransaction = i;
+                            func.currTransition = i;
                             func.symbol = symbol;
                             functionStates.push(func);
                             res = new HashSet<>();
@@ -141,12 +181,11 @@ public class Main {
             }
             FunctionState f = functionStates.pop();
             res = f.res;
-            i = f.currTransaction;
+            i = f.currTransition;
             symbol = f.symbol;
         }
     }
 
-    private static Map<String, Set<String>> follow = new HashMap<>();
 
     private static void calcFollow(){
         for(Character c: Grammar.nonterminals){
@@ -170,11 +209,7 @@ public class Main {
                         for(Integer index: indexes){
                             if(index == rh.length() - 1){
                                 Set<String> tmp = new HashSet<>(follow.get(rule.getKey()));
-                                tmp.removeAll(follow.get(String.valueOf(nonterminal)));
-                                if(!tmp.isEmpty()){
-                                    follow.get(String.valueOf(nonterminal)).addAll(tmp);
-                                    changed = true;
-                                }
+                                changed = follow.get(String.valueOf(nonterminal)).addAll(tmp);
                                 continue;
                             }
                             String symbol = rh.substring(index + 1, index + 2);
@@ -184,11 +219,7 @@ public class Main {
                             Set<String> first = first(symbol);
                             if(first.contains("")){
                                 Set<String> tmp = new HashSet<>(follow.get(rule.getKey()));
-                                tmp.removeAll(follow.get(String.valueOf(nonterminal)));
-                                if(!tmp.isEmpty()){
-                                    follow.get(String.valueOf(nonterminal)).addAll(tmp);
-                                    changed = true;
-                                }
+                                changed = follow.get(String.valueOf(nonterminal)).addAll(tmp);
                                 first.remove("");
                             }
                             first.removeAll(follow.get(String.valueOf(nonterminal)));
@@ -206,4 +237,6 @@ public class Main {
             }
         }
     }
+
+
 }
