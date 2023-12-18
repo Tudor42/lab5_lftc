@@ -1,6 +1,8 @@
 import utils.Item;
 
 import java.util.*;
+import java.util.regex.Pattern;
+
 import utils.*;
 
 public class Main {
@@ -10,7 +12,7 @@ public class Main {
         Grammar.parse_file("grammar");
         Grammar.transitions.put("augmented_grammar_start_var", List.of(Grammar.start));
         first("R").forEach(System.out::println);
-
+        calcFollow();
     }
 
     private static List<State> states() {
@@ -95,7 +97,7 @@ public class Main {
         }
 
         if (first.containsKey(symbol)) {
-            return first.get(symbol);
+            return new HashSet<>(first.get(symbol));
         }
 
         Stack<FunctionState> functionStates = new Stack<>();
@@ -133,7 +135,7 @@ public class Main {
                 }
                 i++;
             }
-            first.put(symbol, res);
+            first.put(symbol, new HashSet<>(res));
             if(functionStates.isEmpty()){
                 return res;
             }
@@ -141,6 +143,67 @@ public class Main {
             res = f.res;
             i = f.currTransaction;
             symbol = f.symbol;
+        }
+    }
+
+    private static Map<String, Set<String>> follow = new HashMap<>();
+
+    private static void calcFollow(){
+        for(Character c: Grammar.nonterminals){
+            follow.put(String.valueOf(c), new HashSet<>());
+        }
+        follow.get(Grammar.start).add("$");
+
+        while (true) {
+            boolean changed = false;
+            for(Character nonterminal: Grammar.nonterminals){
+                for(var rule: Grammar.transitions.entrySet()){
+                    for(String rh: rule.getValue()){
+                        if(!rh.contains(String.valueOf(nonterminal))){
+                            continue;
+                        }
+                        List<Integer> indexes = new ArrayList<>();
+                        for(int i = 0; i < rh.length(); ++i){
+                            if(rh.charAt(i) == nonterminal)
+                                indexes.add(i);
+                        }
+                        for(Integer index: indexes){
+                            if(index == rh.length() - 1){
+                                Set<String> tmp = new HashSet<>(follow.get(rule.getKey()));
+                                tmp.removeAll(follow.get(String.valueOf(nonterminal)));
+                                if(!tmp.isEmpty()){
+                                    follow.get(String.valueOf(nonterminal)).addAll(tmp);
+                                    changed = true;
+                                }
+                                continue;
+                            }
+                            String symbol = rh.substring(index + 1, index + 2);
+                            if(Grammar.terminals.contains(symbol.charAt(0))){
+                                changed = follow.get(String.valueOf(nonterminal)).add(symbol);
+                            }
+                            Set<String> first = first(symbol);
+                            if(first.contains("")){
+                                Set<String> tmp = new HashSet<>(follow.get(rule.getKey()));
+                                tmp.removeAll(follow.get(String.valueOf(nonterminal)));
+                                if(!tmp.isEmpty()){
+                                    follow.get(String.valueOf(nonterminal)).addAll(tmp);
+                                    changed = true;
+                                }
+                                first.remove("");
+                            }
+                            first.removeAll(follow.get(String.valueOf(nonterminal)));
+                            if(!first.isEmpty()){
+                                follow.get(String.valueOf(nonterminal)).addAll(first);
+                                changed = true;
+                            }
+                        }
+
+                    }
+                }
+            }
+            if(!changed){
+                break;
+            }
         }
     }
 }
