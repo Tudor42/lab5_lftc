@@ -10,4 +10,14 @@ public class Action {
     public String from;
     public String to;
     public int index;
+
+    @Override
+    public String toString() {
+        return "Action{" +
+                "actionType" + actionType +
+                ", from='" + from + '\'' +
+                ", to='" + to + '\'' +
+                ", index=" + index +
+                '}';
+    }
 }

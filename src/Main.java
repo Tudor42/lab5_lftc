@@ -1,11 +1,12 @@
 import utils.Item;
 
+import java.security.Key;
 import java.util.*;
 
 import utils.*;
 
 public class Main {
-    static String textToParse = "asad21$";
+    static String textToParse = "i*i$";
     private static final Map<String, Set<String>> follow = new HashMap<>();
 
     public static void main(String[] args) {
@@ -13,6 +14,9 @@ public class Main {
         Grammar.transitions.put("augmented_grammar_start_var", List.of(Grammar.start + "$"));
         Grammar.terminals.add('$');
         calcFollow();
+        for(String key: follow.keySet()){
+            System.out.println("KEY "  + key + follow.get(key));
+        }
 
         List<State> states = states();
         List<Map<String, Action>> actionTable = new ArrayList<>();
@@ -27,14 +31,19 @@ public class Main {
                         action.to = item.to;
                         action.from = item.nonTerminal;
                         action.actionType = Action.ActionType.ACCEPT;
-                    }
-                    for(String followItem: follow.get(item.nonTerminal)) {
-                        Action action = new Action();
-                        action.to = item.to;
-                        action.from = item.nonTerminal;
-                        action.actionType = Action.ActionType.REDUCE;
-                        if(newLine.put(followItem, action) != null){
+                        if (newLine.put("$", action) != null) {
                             throw new RuntimeException("Reduce/reduce conflict");
+                        }
+                    }
+                    if(!item.nonTerminal.equals("augmented_grammar_start_var")) {
+                        for (String followItem : follow.get(item.nonTerminal)) {
+                            Action action = new Action();
+                            action.to = item.to;
+                            action.from = item.nonTerminal;
+                            action.actionType = Action.ActionType.REDUCE;
+                            if (newLine.put(followItem, action) != null) {
+                                throw new RuntimeException("Reduce/reduce conflict");
+                            }
                         }
                     }
                 }
@@ -53,6 +62,54 @@ public class Main {
             }
             actionTable.add(newLine);
             goTo.add(goToLine);
+        }
+
+        parse(actionTable, goTo);
+    }
+
+    private static void parse(List<Map<String, Action>> actionTable, List<Map<String, Integer>> goTo){
+        if(textToParse.length() == 1){
+            System.out.println("Correct text.");
+            return;
+        }
+
+        int currStateIndex = 0;
+        Stack<String> stack = new Stack<>();
+        stack.push("0");
+
+        while(true){
+            String currentChar = String.valueOf(textToParse.charAt(0));
+            Action currAction = actionTable.get(currStateIndex).get(currentChar);
+
+            if(currAction == null){
+                System.out.println("Can't parse the text.");
+                break;
+            }
+
+            if(currAction.actionType == Action.ActionType.SHIFT){
+                stack.push(currentChar);
+                textToParse = textToParse.substring(1);
+                currStateIndex = currAction.index;
+                stack.push(String.valueOf(currStateIndex));
+            }
+
+            if(currAction.actionType == Action.ActionType.REDUCE){
+                int toRemove = currAction.to.length() * 2;
+                while (toRemove != 0) {
+                    stack.pop();
+                    toRemove--;
+                }
+
+                int goToIndex = Integer.parseInt(String.valueOf(stack.peek()));
+                stack.push(currAction.from);
+                currStateIndex = goTo.get(goToIndex).get(String.valueOf(currAction.from.charAt(0)));
+                stack.push(String.valueOf(currStateIndex));
+            }
+
+            if(currAction.actionType == Action.ActionType.ACCEPT){
+                System.out.println("Correct text.");
+                break;
+            }
         }
     }
 
