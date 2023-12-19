@@ -6,7 +6,7 @@ import java.util.*;
 import utils.*;
 
 public class Main {
-    static String textToParse = "i*i$";
+    static String textToParse = "i*i+i$";
     private static final Map<String, Set<String>> follow = new HashMap<>();
 
     public static void main(String[] args) {
@@ -14,9 +14,6 @@ public class Main {
         Grammar.transitions.put("augmented_grammar_start_var", List.of(Grammar.start + "$"));
         Grammar.terminals.add('$');
         calcFollow();
-        for (String key : follow.keySet()) {
-            System.out.println("KEY " + key + follow.get(key));
-        }
 
         List<State> states = states();
         List<Map<String, Action>> actionTable = new ArrayList<>();
@@ -25,25 +22,23 @@ public class Main {
             Map<String, Action> newLine = new HashMap<>();
             Map<String, Integer> goToLine = new HashMap<>();
             for (Item item : s.items) {
+                if (item.to.equals(Grammar.start + "$") && item.nonTerminal.equals("augmented_grammar_start_var")) {
+                    Action action = new Action();
+                    action.to = item.to;
+                    action.from = item.nonTerminal;
+                    action.actionType = Action.ActionType.ACCEPT;
+                    if (newLine.put("$", action) != null) {
+                        throw new RuntimeException("Reduce/reduce conflict");
+                    }
+                }
                 if (item.dotPosition == item.to.length()) { // reduce
-                    if (item.to.equals(Grammar.start + "$") && item.nonTerminal.equals("augmented_grammar_start_var")) {
+                    for (String followItem : follow.get(item.nonTerminal)) {
                         Action action = new Action();
                         action.to = item.to;
                         action.from = item.nonTerminal;
-                        action.actionType = Action.ActionType.ACCEPT;
-                        if (newLine.put("$", action) != null) {
+                        action.actionType = Action.ActionType.REDUCE;
+                        if (newLine.put(followItem, action) != null) {
                             throw new RuntimeException("Reduce/reduce conflict");
-                        }
-                    }
-                    if (!item.nonTerminal.equals("augmented_grammar_start_var")) {
-                        for (String followItem : follow.get(item.nonTerminal)) {
-                            Action action = new Action();
-                            action.to = item.to;
-                            action.from = item.nonTerminal;
-                            action.actionType = Action.ActionType.REDUCE;
-                            if (newLine.put(followItem, action) != null) {
-                                throw new RuntimeException("Reduce/reduce conflict");
-                            }
                         }
                     }
                 }
@@ -130,7 +125,9 @@ public class Main {
         for (int i = 0; i < states.size(); ++i) {
             Set<String> stringWithDot = new HashSet<>();
             for (Item item : states.get(i).items) {
-                if (item.dotPosition < item.to.length()) {
+                boolean startVarCondition = item.nonTerminal.equals("augmented_grammar_start_var") && item.dotPosition < item.to.length() - 1;
+                boolean restOfVarsCondition = !item.nonTerminal.equals("augmented_grammar_start_var") && item.dotPosition < item.to.length();
+                if (startVarCondition || restOfVarsCondition) {
                     stringWithDot.add(item.to.substring(item.dotPosition, item.dotPosition + 1));
                 }
             }
