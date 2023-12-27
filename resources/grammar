@@ -1,5 +1,6 @@
-S->L=R
-S->R
-L->*R
-L->i
-R->L
+E->E+T
+E->T
+T->T*F
+T->F
+F->(E)
+F->i
