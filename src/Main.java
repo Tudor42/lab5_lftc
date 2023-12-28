@@ -28,7 +28,7 @@ public class Main {
                     action.from = item.nonTerminal;
                     action.actionType = Action.ActionType.ACCEPT;
                     if (newLine.put("$", action) != null) {
-                        throw new RuntimeException("Reduce/reduce conflict");
+                        throw new RuntimeException("Conflict");
                     }
                 }
                 if (item.dotPosition == item.to.length()) { // reduce
