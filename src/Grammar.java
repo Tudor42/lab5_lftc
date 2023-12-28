@@ -20,14 +20,20 @@ public class Grammar {
             String tmp;
             while ((tmp = bufferedReader.readLine()) != null) {
                 String[] parts = tmp.split("->");
-                parts[0] = parts[0].strip();
-                parts[1] = parts[1].strip();
+                String left, right;
+                if(parts.length == 2) {
+                    left = parts[0].strip();
+                    right = parts[1].strip();
+                }else {
+                    left = parts[0].strip();
+                    right = "";
+                }
 
                 if(start == null) {
-                    start = parts[0];
+                    start = left;
                 }
-                nonterminals.add(parts[0].charAt(0));
-                for (Character c : parts[1].toCharArray()) {
+                nonterminals.add(left.charAt(0));
+                for (Character c : right.toCharArray()) {
                     if ('A' <= c && c <= 'Z') {
                         nonterminals.add(c);
                     } else {
@@ -35,13 +41,13 @@ public class Grammar {
                     }
                 }
 
-                transitions.compute(parts[0], (k, v) -> {
+                transitions.compute(left, (k, v) -> {
                     if(v==null) {
                         List<String> t = new ArrayList<>();
-                        t.add(parts[1]);
+                        t.add(right);
                         return t;
                     } else {
-                        v.add(parts[1]);
+                        v.add(right);
                         return v;
                     }
                 });
