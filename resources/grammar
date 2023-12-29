@@ -1,8 +1,8 @@
 program->declaration-seq instr-seq
 declaration-seq->declaration SEMI_COLON
-declaration-seq->declaration SEMI_COLON declaration-seq
-instr-seq->instruction
-instr-seq->instr-seq SEMI_COLON
+declaration-seq->declaration declaration-seq
+instr-seq->instruction SEMI_COLON
+instr-seq->instruction instr-seq
 instr-seq->LBRACKET instr-seq RBRACKET
 declaration->INT var_seq
 declaration->UINT var_seq
@@ -33,7 +33,6 @@ factor->ADD factor
 conditional->IF LPARENTHESIS condition RPARENTHESIS instr-seq
 condition->relation
 condition->relation boolean_op condition
-relation->expression relational_op expression
 relation->expression relational_op expression
 relational_op->EQUAL
 relational_op->NOT_EQUAL

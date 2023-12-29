@@ -21,6 +21,7 @@ public class Main {
         tokenSequence.addAll(Arrays.asList(Grammar.start, "$"));
         Grammar.transitions.put("augmented_grammar_start_var", List.of(tokenSequence));
         Grammar.terminals.add("$");
+        calcFirst();
         calcFollow();
 
         List<State> states = states();
@@ -31,7 +32,7 @@ public class Main {
             Map<String, Integer> goToLine = new HashMap<>();
             for (Item item : s.items) {
                 if (item.nonTerminal.equals("augmented_grammar_start_var") && item.getTo().size() == tokenSequence.size()
-                && item.getTo().get(0).equals(tokenSequence.get(0)) && item.getTo().get(1).equals(tokenSequence.get(1))) {
+                        && item.getTo().get(0).equals(tokenSequence.get(0)) && item.getTo().get(1).equals(tokenSequence.get(1))) {
                     Action action = new Action();
                     action.to = item.getTo();
                     action.from = item.nonTerminal;
@@ -47,7 +48,7 @@ public class Main {
                         action.from = item.nonTerminal;
                         action.actionType = Action.ActionType.REDUCE;
                         if (newLine.put(followItem, action) != null) {
-                            throw new RuntimeException("Reduce/reduce conflict");
+                            throw new RuntimeException("Reduce/reduce conflict for " + followItem);
                         }
                     }
                 }
@@ -58,7 +59,7 @@ public class Main {
                     action.index = states.indexOf(s.transitions.get(use));
                     action.actionType = Action.ActionType.SHIFT;
                     if (newLine.put(use, action) != null) {
-                        throw new RuntimeException("Reduce/shift conflict");
+                        throw new RuntimeException("Reduce/shift conflict for " + use);
                     }
                 } else {
                     goToLine.put(use, states.indexOf(s.transitions.get(use)));
@@ -68,20 +69,21 @@ public class Main {
             goTo.add(goToLine);
         }
 
-        try(BufferedReader bufferedReader= new BufferedReader(new FileReader("resources/code"))) {
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader("resources/code"))) {
             String line;
             int lineNr = 0;
-            while((line = bufferedReader.readLine()) != null){
+            while ((line = bufferedReader.readLine()) != null) {
                 ++lineNr;
 
-                if(line.isBlank()){
+                if (line.isBlank()) {
                     continue;
                 }
                 Matcher matcher = Pattern.compile("").matcher(line.trim());
-                nextToken: while(!matcher.hitEnd()){
-                    for(TokenType t: TokenType.values()){
+                nextToken:
+                while (!matcher.hitEnd()) {
+                    for (TokenType t : TokenType.values()) {
                         String matched = t.match(matcher);
-                        if(matched != null){
+                        if (matched != null) {
                             tokens.add(t.toString());
                             continue nextToken;
                         }
@@ -89,7 +91,7 @@ public class Main {
                     throw new InvalidTokenException(line, lineNr, matcher.regionStart());
                 }
             }
-        }catch (InvalidTokenException e){
+        } catch (InvalidTokenException e) {
             System.out.println(e.getMessage());
             throw new RuntimeException();
         }
@@ -119,7 +121,7 @@ public class Main {
 
             if (currAction.actionType == Action.ActionType.SHIFT) {
                 stack.push(currentChar);
-                tokens = tokens.subList(1, tokens.size()); // TODO goto next token
+                tokens = tokens.subList(1, tokens.size());
                 currStateIndex = currAction.index;
                 stack.push(String.valueOf(currStateIndex));
                 System.out.printf("%40s %n", "Shift" + currStateIndex);
@@ -223,60 +225,101 @@ public class Main {
         public Integer currTransition;
     }
 
-    private static Set<String> first(String symbol) {
-        if (Grammar.terminals.contains(symbol)) {
-            return new HashSet<>(Set.of(symbol));
-        }
-
-        if (first.containsKey(symbol)) {
-            return new HashSet<>(first.get(symbol));
-        }
-
-        Stack<FunctionState> functionStates = new Stack<>();
-        int i = 0;
+    private static Set<String> plus(Set<String> l1, Set<String> l2) {
         Set<String> res = new HashSet<>();
-        while (true) {
-            startFunc:
-            while (i < Grammar.transitions.get(symbol).size()) {
-                Grammar.TokenSequence transition = Grammar.transitions.get(symbol).get(i);
-                if (transition.isEmpty()) {
+        for (String x : l1) {
+            for (String y : l2) {
+                if(x.equals("") && !y.equals(""))
+                    res.add(y);
+                if(!x.equals("") && y.equals(""))
+                    res.add(x);
+                if(x.equals("") && y.equals(""))
                     res.add("");
-                }
-                for (String s : transition) {
-                    if (Grammar.terminals.contains(s)) {
-                        res.add(s);
-                        break;
-                    }
-                    if (Grammar.nonterminals.contains(s)) {
-                        if (first.containsKey(s)) {
-                            res.addAll(first.get(s));
-                            if (!first.get(s).contains("")) {
-                                break;
-                            }
-                        } else {
-                            FunctionState func = new FunctionState();
-                            func.res = res;
-                            func.currTransition = i;
-                            func.symbol = symbol;
-                            functionStates.push(func);
-                            res = new HashSet<>();
-                            i = 0;
-                            symbol = s;
-                            continue startFunc;
-                        }
-                    }
-                }
-                i++;
+                if(!x.equals("") && !y.equals(""))
+                    res.add(x);
             }
-            first.put(symbol, new HashSet<>(res));
-            if (functionStates.isEmpty()) {
-                return res;
-            }
-            FunctionState f = functionStates.pop();
-            res = f.res;
-            i = f.currTransition;
-            symbol = f.symbol;
         }
+        return res;
+    }
+
+    private static void calcFirst() {
+        for(String terminal: Grammar.terminals){
+            first.put(terminal, new HashSet<>(Set.of(terminal)));
+        }
+
+        for (String nonterminal : Grammar.nonterminals) {
+            first.put(nonterminal, new HashSet<>());
+            for (int i = 0; i < Grammar.transitions.get(nonterminal).size(); i++) {
+                Grammar.TokenSequence transition = Grammar.transitions.get(nonterminal).get(i);
+                if (Grammar.terminals.contains(transition.get(0)) || transition.get(0).equals("")) {
+                    first.get(nonterminal).add(transition.get(0));
+                }
+            }
+        }
+
+        boolean changed;
+        do {
+            changed = false;
+            for (String nonterminal : Grammar.nonterminals) {
+                List<Set<String>> result = new ArrayList<>();
+                for (int j = 0; j < Grammar.transitions.get(nonterminal).size(); j++) {
+                    Grammar.TokenSequence transition = Grammar.transitions.get(nonterminal).get(j);
+                    Set<String> currentRes;
+
+                    if (transition.size() == 1) {
+                        if (Grammar.nonterminals.contains(transition.get(0))) {
+                            currentRes = first.get(transition.get(0));
+                            result.add(new HashSet<>(currentRes));
+                        } else {
+                            currentRes = new HashSet<>();
+                            currentRes.add(transition.get(0));
+                            result.add(currentRes);
+                        }
+                        continue;
+                    }
+
+                    int n;
+                    Set<String> l1, l2;
+                    if (Grammar.nonterminals.contains(transition.get(0))) {
+                        l1 = first.get(transition.get(0));
+                    } else {
+                        l1 = new HashSet<>();
+                        l1.add(transition.get(0));
+                    }
+
+                    if (Grammar.nonterminals.contains(transition.get(1))) {
+                        l2 = first.get(transition.get(1));
+                    } else {
+                        l2 = new HashSet<>();
+                        l2.add(transition.get(1));
+                    }
+
+                    currentRes = plus(l1, l2);
+                    n = 2;
+                    while (n < transition.size()) {
+                        if(Grammar.nonterminals.contains(transition.get(n))){
+                            l2 = first.get(transition.get(n));
+                        }else {
+                            l2 = new HashSet<>();
+                            l2.add(transition.get(n));
+                        }
+                        currentRes = plus(currentRes, l2);
+                        n++;
+                    }
+                    result.add(new HashSet<>(currentRes));
+                }
+
+                Set<String> newFirst = new HashSet<>();
+                for(Set<String> set: result){
+                    newFirst.addAll(set);
+                }
+
+                if(!first.get(nonterminal).equals(newFirst)){
+                    first.put(nonterminal, newFirst);
+                    changed = true;
+                }
+            }
+        } while (changed);
     }
 
     private static void calcFollow() {
@@ -311,15 +354,15 @@ public class Main {
                             if (Grammar.terminals.contains(symbol)) {
                                 changed = follow.get(nonterminal).add(symbol);
                             }
-                            Set<String> first = first(symbol);
-                            if (first.contains("")) {
+                            Set<String> frst = first.get(symbol);
+                            if (frst.contains("")) {
                                 Set<String> tmp = new HashSet<>(follow.get(rule.getKey()));
                                 changed = follow.get(nonterminal).addAll(tmp);
-                                first.remove("");
+                                frst.remove("");
                             }
-                            first.removeAll(follow.get(nonterminal));
-                            if (!first.isEmpty()) {
-                                follow.get(nonterminal).addAll(first);
+                            frst.removeAll(follow.get(nonterminal));
+                            if (!frst.isEmpty()) {
+                                follow.get(nonterminal).addAll(frst);
                                 changed = true;
                             }
                         }
