@@ -1,7 +1,46 @@
-expr->expr + term
-expr->term
-term->term * factor
+program->declaration-seq instr-seq
+declaration-seq->declaration SEMI_COLON
+declaration-seq->declaration SEMI_COLON declaration-seq
+instr-seq->instruction
+instr-seq->instr-seq SEMI_COLON
+instr-seq->LBRACKET instr-seq RBRACKET
+declaration->INT var_seq
+declaration->UINT var_seq
+declaration->FLOAT var_seq
+declaration->STRUCT var_seq
+var_seq->VAR_NAME
+var_seq->VAR_NAME COMMA var_seq
+instruction->read
+instruction->write
+instruction->assignment
+instruction->conditional
+instruction->loop
+read->SCAN LPARENTHESIS expression RPARENTHESIS
+write->PRINT LPARENTHESIS expression RPARENTHESIS
+assignment->VAR_NAME ASSIGN expression
+expression->term
+expression->expression ADD term
+expression->expression MINUS term
 term->factor
-factor->( expr )
-factor->number
-factor->var
+term->term MULTIPLY factor
+term->term DIVIDE factor
+term->term MODULUS factor
+factor->VAR_NAME
+factor->NUMBER
+factor->LPARENTHESIS expression RPARENTHESIS
+factor->MINUS factor
+factor->ADD factor
+conditional->IF LPARENTHESIS condition RPARENTHESIS instr-seq
+condition->relation
+condition->relation boolean_op condition
+relation->expression relational_op expression
+relation->expression relational_op expression
+relational_op->EQUAL
+relational_op->NOT_EQUAL
+relational_op->GREATER
+relational_op->GREATER_EQUAL
+relational_op->LESS
+relational_op->LESS_EQUAL
+loop->WHILE LPARENTHESIS condition RPARENTHESIS instr-seq
+boolean_op->BOOL_AND
+boolean_op->BOOL_OR

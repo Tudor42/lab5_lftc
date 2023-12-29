@@ -1,14 +1,21 @@
+import exceptions.InvalidTokenException;
+import tokens.TokenType;
 import utils.Item;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import utils.*;
 
 public class Main {
-    static List<String> tokens = List.of("number", "+", "number", "*", "var", "$");
+    static List<String> tokens = new ArrayList<>();
     private static final Map<String, Set<String>> follow = new HashMap<>();
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InvalidTokenException, IOException {
         Grammar.parse_file("grammar");
         Grammar.TokenSequence tokenSequence = new Grammar.TokenSequence();
         tokenSequence.addAll(Arrays.asList(Grammar.start, "$"));
@@ -61,6 +68,33 @@ public class Main {
             goTo.add(goToLine);
         }
 
+        try(BufferedReader bufferedReader= new BufferedReader(new FileReader("resources/code"))) {
+            String line;
+            int lineNr = 0;
+            while((line = bufferedReader.readLine()) != null){
+                ++lineNr;
+
+                if(line.isBlank()){
+                    continue;
+                }
+                Matcher matcher = Pattern.compile("").matcher(line.trim());
+                nextToken: while(!matcher.hitEnd()){
+                    for(TokenType t: TokenType.values()){
+                        String matched = t.match(matcher);
+                        if(matched != null){
+                            tokens.add(t.toString());
+                            continue nextToken;
+                        }
+                    }
+                    throw new InvalidTokenException(line, lineNr, matcher.regionStart());
+                }
+            }
+        }catch (InvalidTokenException e){
+            System.out.println(e.getMessage());
+            throw new RuntimeException();
+        }
+        tokens.add("$");
+
         parse(actionTable, goTo);
     }
 
@@ -77,7 +111,7 @@ public class Main {
         while (true) {
             String currentChar = tokens.get(0);
             Action currAction = actionTable.get(currStateIndex).get(currentChar);
-            System.out.printf("%30s %50s ", String.join(" ", stack), String.join(" ", tokens));
+            System.out.printf("%30s %50s ", String.join(" ", stack.subList(Math.max(stack.size() - 4, 0), stack.size() - 1)), String.join(" ", tokens.subList(0, Math.min(5, tokens.size()) - 1)));
             if (currAction == null) {
                 System.out.printf("%40s %n", "Can't parse the text.");
                 break;

@@ -1,0 +1,12 @@
+uint c1234567;
+int n;
+int b;
+int c;
+uint d10;
+n=0x1511.00;
+
+while(n < 12 && n >=11){
+   scan(c);
+   n = n + 1;
+   d19 = c - b;
+}
