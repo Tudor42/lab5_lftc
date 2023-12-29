@@ -13,7 +13,15 @@ public class Grammar {
 
     public static Map<String, List<TokenSequence>> transitions = new HashMap<>();
 
-    public static class TokenSequence extends ArrayList<String>{}
+    public static class TokenSequence extends ArrayList<String>{
+        public TokenSequence(TokenSequence to) {
+            super(to);
+        }
+
+        public TokenSequence() {
+            super();
+        }
+    }
 
     public static void parse_file(String filename) {
         nonterminals.clear();

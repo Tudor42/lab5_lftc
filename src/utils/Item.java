@@ -1,15 +1,16 @@
 package utils;
 
+import java.util.ArrayList;
 import java.util.Objects;
 
 public class Item {
     public String nonTerminal;
-    public Grammar.TokenSequence to;
+    private Grammar.TokenSequence to;
     public int dotPosition = 0;
 
     public Item(String nonTerminal, Grammar.TokenSequence to){
         this.nonTerminal = nonTerminal;
-        this.to = to;
+        this.setTo(to);
     }
 
     @Override
@@ -17,21 +18,28 @@ public class Item {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Item item = (Item) o;
-        return dotPosition == item.dotPosition && nonTerminal.equals(item.nonTerminal)
-                && to.containsAll(item.to) && item.to.containsAll(to);
+        return dotPosition == item.dotPosition && Objects.equals(nonTerminal, item.nonTerminal) && Objects.equals(to, item.to);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(nonTerminal, to, dotPosition);
+        return Objects.hash(nonTerminal, getTo(), dotPosition);
     }
 
     @Override
     public String toString() {
         return "Item{" +
                 "nonTerminal='" + nonTerminal + '\'' +
-                ", to='" + to + '\'' +
+                ", to='" + getTo() + '\'' +
                 ", dotPosition=" + dotPosition +
                 '}';
+    }
+
+    public Grammar.TokenSequence getTo() {
+        return new Grammar.TokenSequence(to);
+    }
+
+    private void setTo(Grammar.TokenSequence to) {
+        this.to = to;
     }
 }

@@ -23,20 +23,20 @@ public class Main {
             Map<String, Action> newLine = new HashMap<>();
             Map<String, Integer> goToLine = new HashMap<>();
             for (Item item : s.items) {
-                if (item.equals(new Item("augmented_grammar_start_var",
-                        tokenSequence))) {
+                if (item.nonTerminal.equals("augmented_grammar_start_var") && item.getTo().size() == tokenSequence.size()
+                && item.getTo().get(0).equals(tokenSequence.get(0)) && item.getTo().get(1).equals(tokenSequence.get(1))) {
                     Action action = new Action();
-                    action.to = item.to;
+                    action.to = item.getTo();
                     action.from = item.nonTerminal;
                     action.actionType = Action.ActionType.ACCEPT;
                     if (newLine.put("$", action) != null) {
                         throw new RuntimeException("Conflict");
                     }
                 }
-                if (item.dotPosition == item.to.size()) { // reduce
+                if (item.dotPosition == item.getTo().size()) { // reduce
                     for (String followItem : follow.get(item.nonTerminal)) {
                         Action action = new Action();
-                        action.to = item.to;
+                        action.to = item.getTo();
                         action.from = item.nonTerminal;
                         action.actionType = Action.ActionType.REDUCE;
                         if (newLine.put(followItem, action) != null) {
@@ -73,11 +73,11 @@ public class Main {
         int currStateIndex = 0;
         Stack<String> stack = new Stack<>();
         stack.push("0");
-
+        System.out.printf("%30s %50s %40s %n", "Stack", "InputBuffer", "Action");
         while (true) {
-            String currentChar = String.valueOf(textToParse.charAt(0));
+            String currentChar = String.valueOf(textToParse.charAt(0));  // TODO change to get current token
             Action currAction = actionTable.get(currStateIndex).get(currentChar);
-
+            System.out.printf("%30s %50s ", String.join(" ", stack), textToParse);
             if (currAction == null) {
                 System.out.println("Can't parse the text.");
                 break;
@@ -85,9 +85,10 @@ public class Main {
 
             if (currAction.actionType == Action.ActionType.SHIFT) {
                 stack.push(currentChar);
-                textToParse = textToParse.substring(1);
+                textToParse = textToParse.substring(1); // TODO goto next token
                 currStateIndex = currAction.index;
                 stack.push(String.valueOf(currStateIndex));
+                System.out.printf("%40s %n", "Shift" + currStateIndex);
             }
 
             if (currAction.actionType == Action.ActionType.REDUCE) {
@@ -101,11 +102,11 @@ public class Main {
                 stack.push(currAction.from);
                 currStateIndex = goTo.get(goToIndex).get(String.valueOf(currAction.from.charAt(0)));
                 stack.push(String.valueOf(currStateIndex));
-                System.out.println(currAction.from + "->" + currAction.to);
+                System.out.printf("%40s %n", "Reduce " + currAction.from + "->" + currAction.to);
             }
 
             if (currAction.actionType == Action.ActionType.ACCEPT) {
-                System.out.println("Correct text.");
+                System.out.printf("%40s %n", "Correct text.");
                 break;
             }
         }
@@ -128,17 +129,17 @@ public class Main {
         for (int i = 0; i < states.size(); ++i) {
             Set<String> stringWithDot = new HashSet<>();
             for (Item item : states.get(i).items) {
-                boolean startVarCondition = item.nonTerminal.equals("augmented_grammar_start_var") && item.dotPosition < item.to.size() - 1;
-                boolean restOfVarsCondition = !item.nonTerminal.equals("augmented_grammar_start_var") && item.dotPosition < item.to.size();
+                boolean startVarCondition = item.nonTerminal.equals("augmented_grammar_start_var") && item.dotPosition < item.getTo().size() - 1;
+                boolean restOfVarsCondition = !item.nonTerminal.equals("augmented_grammar_start_var") && item.dotPosition < item.getTo().size();
                 if (startVarCondition || restOfVarsCondition) {
-                    stringWithDot.add(item.to.get(item.dotPosition));
+                    stringWithDot.add(item.getTo().get(item.dotPosition));
                 }
             }
             for (String s : stringWithDot) {
                 HashSet<Item> nextStateItems = new HashSet<>();
                 for (Item item : states.get(i).items) {
-                    if (item.dotPosition < item.to.size() && s.equals(item.to.get(item.dotPosition))) {
-                        Item newItem = new Item(item.nonTerminal, item.to);
+                    if (item.dotPosition < item.getTo().size() && s.equals(item.getTo().get(item.dotPosition))) {
+                        Item newItem = new Item(item.nonTerminal, item.getTo());
                         newItem.dotPosition = item.dotPosition + 1;
                         nextStateItems.add(newItem);
                     }
@@ -150,10 +151,10 @@ public class Main {
                     changeFlag = false;
                     HashSet<Item> temp = new HashSet<>();
                     for (Item item : nextState.items) {
-                        if (item.dotPosition < item.to.size() && Grammar.nonterminals.contains(item.to.get(item.dotPosition))) {
-                            Grammar.transitions.get(item.to.get(item.dotPosition)).forEach(rule -> {
+                        if (item.dotPosition < item.getTo().size() && Grammar.nonterminals.contains(item.getTo().get(item.dotPosition))) {
+                            Grammar.transitions.get(item.getTo().get(item.dotPosition)).forEach(rule -> {
                                 if (!rule.isEmpty()) {
-                                    temp.add(new Item(item.to.get(item.dotPosition), rule));
+                                    temp.add(new Item(item.getTo().get(item.dotPosition), rule));
                                 }
                             });
                         }
