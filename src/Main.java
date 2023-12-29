@@ -5,7 +5,7 @@ import java.util.*;
 import utils.*;
 
 public class Main {
-    static String textToParse = "ii*i+i$";
+    static List<String> tokens = List.of("number", "+", "number", "*", "var", "$");
     private static final Map<String, Set<String>> follow = new HashMap<>();
 
     public static void main(String[] args) {
@@ -65,7 +65,7 @@ public class Main {
     }
 
     private static void parse(List<Map<String, Action>> actionTable, List<Map<String, Integer>> goTo) {
-        if (textToParse.length() == 1) {
+        if (tokens.size() == 1) {
             System.out.println("Correct text.");
             return;
         }
@@ -75,17 +75,17 @@ public class Main {
         stack.push("0");
         System.out.printf("%30s %50s %40s %n", "Stack", "InputBuffer", "Action");
         while (true) {
-            String currentChar = String.valueOf(textToParse.charAt(0));  // TODO change to get current token
+            String currentChar = tokens.get(0);
             Action currAction = actionTable.get(currStateIndex).get(currentChar);
-            System.out.printf("%30s %50s ", String.join(" ", stack), textToParse);
+            System.out.printf("%30s %50s ", String.join(" ", stack), String.join(" ", tokens));
             if (currAction == null) {
-                System.out.println("Can't parse the text.");
+                System.out.printf("%40s %n", "Can't parse the text.");
                 break;
             }
 
             if (currAction.actionType == Action.ActionType.SHIFT) {
                 stack.push(currentChar);
-                textToParse = textToParse.substring(1); // TODO goto next token
+                tokens = tokens.subList(1, tokens.size()); // TODO goto next token
                 currStateIndex = currAction.index;
                 stack.push(String.valueOf(currStateIndex));
                 System.out.printf("%40s %n", "Shift" + currStateIndex);
@@ -100,7 +100,7 @@ public class Main {
 
                 int goToIndex = Integer.parseInt(String.valueOf(stack.peek()));
                 stack.push(currAction.from);
-                currStateIndex = goTo.get(goToIndex).get(String.valueOf(currAction.from.charAt(0)));
+                currStateIndex = goTo.get(goToIndex).get(currAction.from);
                 stack.push(String.valueOf(currStateIndex));
                 System.out.printf("%40s %n", "Reduce " + currAction.from + "->" + currAction.to);
             }
