@@ -4,10 +4,10 @@ import java.util.Objects;
 
 public class Item {
     public String nonTerminal;
-    public String to;
+    public Grammar.TokenSequence to;
     public int dotPosition = 0;
 
-    public Item(String nonTerminal, String to){
+    public Item(String nonTerminal, Grammar.TokenSequence to){
         this.nonTerminal = nonTerminal;
         this.to = to;
     }
@@ -17,7 +17,8 @@ public class Item {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Item item = (Item) o;
-        return dotPosition == item.dotPosition && Objects.equals(nonTerminal, item.nonTerminal) && Objects.equals(to, item.to);
+        return dotPosition == item.dotPosition && nonTerminal.equals(item.nonTerminal)
+                && to.containsAll(item.to) && item.to.containsAll(to);
     }
 
     @Override

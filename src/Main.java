@@ -1,18 +1,19 @@
 import utils.Item;
 
-import java.security.Key;
 import java.util.*;
 
 import utils.*;
 
 public class Main {
-    static String textToParse = "i*i+i$";
+    static String textToParse = "ii*i+i$";
     private static final Map<String, Set<String>> follow = new HashMap<>();
 
     public static void main(String[] args) {
         Grammar.parse_file("grammar");
-        Grammar.transitions.put("augmented_grammar_start_var", List.of(Grammar.start + "$"));
-        Grammar.terminals.add('$');
+        Grammar.TokenSequence tokenSequence = new Grammar.TokenSequence();
+        tokenSequence.addAll(Arrays.asList(Grammar.start, "$"));
+        Grammar.transitions.put("augmented_grammar_start_var", List.of(tokenSequence));
+        Grammar.terminals.add("$");
         calcFollow();
 
         List<State> states = states();
@@ -22,7 +23,8 @@ public class Main {
             Map<String, Action> newLine = new HashMap<>();
             Map<String, Integer> goToLine = new HashMap<>();
             for (Item item : s.items) {
-                if (item.to.equals(Grammar.start + "$") && item.nonTerminal.equals("augmented_grammar_start_var")) {
+                if (item.equals(new Item("augmented_grammar_start_var",
+                        tokenSequence))) {
                     Action action = new Action();
                     action.to = item.to;
                     action.from = item.nonTerminal;
@@ -31,7 +33,7 @@ public class Main {
                         throw new RuntimeException("Conflict");
                     }
                 }
-                if (item.dotPosition == item.to.length()) { // reduce
+                if (item.dotPosition == item.to.size()) { // reduce
                     for (String followItem : follow.get(item.nonTerminal)) {
                         Action action = new Action();
                         action.to = item.to;
@@ -44,7 +46,7 @@ public class Main {
                 }
             }
             for (String use : s.transitions.keySet()) {
-                if (Grammar.terminals.contains(use.charAt(0))) {
+                if (Grammar.terminals.contains(use)) {
                     Action action = new Action();
                     action.index = states.indexOf(s.transitions.get(use));
                     action.actionType = Action.ActionType.SHIFT;
@@ -89,7 +91,7 @@ public class Main {
             }
 
             if (currAction.actionType == Action.ActionType.REDUCE) {
-                int toRemove = currAction.to.length() * 2;
+                int toRemove = currAction.to.size() * 2;
                 while (toRemove != 0) {
                     stack.pop();
                     toRemove--;
@@ -99,6 +101,7 @@ public class Main {
                 stack.push(currAction.from);
                 currStateIndex = goTo.get(goToIndex).get(String.valueOf(currAction.from.charAt(0)));
                 stack.push(String.valueOf(currStateIndex));
+                System.out.println(currAction.from + "->" + currAction.to);
             }
 
             if (currAction.actionType == Action.ActionType.ACCEPT) {
@@ -113,7 +116,7 @@ public class Main {
         State initialState = new State();
 
         for (var key : Grammar.transitions.keySet()) {
-            for (String s : Grammar.transitions.get(key)) {
+            for (Grammar.TokenSequence s : Grammar.transitions.get(key)) {
                 if (!s.isEmpty()) {
                     initialState.items.add(new Item(key, s));
                 }
@@ -125,16 +128,16 @@ public class Main {
         for (int i = 0; i < states.size(); ++i) {
             Set<String> stringWithDot = new HashSet<>();
             for (Item item : states.get(i).items) {
-                boolean startVarCondition = item.nonTerminal.equals("augmented_grammar_start_var") && item.dotPosition < item.to.length() - 1;
-                boolean restOfVarsCondition = !item.nonTerminal.equals("augmented_grammar_start_var") && item.dotPosition < item.to.length();
+                boolean startVarCondition = item.nonTerminal.equals("augmented_grammar_start_var") && item.dotPosition < item.to.size() - 1;
+                boolean restOfVarsCondition = !item.nonTerminal.equals("augmented_grammar_start_var") && item.dotPosition < item.to.size();
                 if (startVarCondition || restOfVarsCondition) {
-                    stringWithDot.add(item.to.substring(item.dotPosition, item.dotPosition + 1));
+                    stringWithDot.add(item.to.get(item.dotPosition));
                 }
             }
             for (String s : stringWithDot) {
                 HashSet<Item> nextStateItems = new HashSet<>();
                 for (Item item : states.get(i).items) {
-                    if (item.dotPosition < item.to.length() && item.to.substring(item.dotPosition, item.dotPosition + 1).equals(s)) {
+                    if (item.dotPosition < item.to.size() && s.equals(item.to.get(item.dotPosition))) {
                         Item newItem = new Item(item.nonTerminal, item.to);
                         newItem.dotPosition = item.dotPosition + 1;
                         nextStateItems.add(newItem);
@@ -147,10 +150,10 @@ public class Main {
                     changeFlag = false;
                     HashSet<Item> temp = new HashSet<>();
                     for (Item item : nextState.items) {
-                        if (item.dotPosition < item.to.length() && Grammar.nonterminals.contains(item.to.charAt(item.dotPosition))) {
-                            Grammar.transitions.get(String.valueOf(item.to.charAt(item.dotPosition))).forEach(rule -> {
+                        if (item.dotPosition < item.to.size() && Grammar.nonterminals.contains(item.to.get(item.dotPosition))) {
+                            Grammar.transitions.get(item.to.get(item.dotPosition)).forEach(rule -> {
                                 if (!rule.isEmpty()) {
-                                    temp.add(new Item(item.to.substring(item.dotPosition, item.dotPosition + 1), rule));
+                                    temp.add(new Item(item.to.get(item.dotPosition), rule));
                                 }
                             });
                         }
@@ -186,7 +189,7 @@ public class Main {
     }
 
     private static Set<String> first(String symbol) {
-        if (Grammar.terminals.contains(symbol.charAt(0))) {
+        if (Grammar.terminals.contains(symbol)) {
             return new HashSet<>(Set.of(symbol));
         }
 
@@ -200,19 +203,19 @@ public class Main {
         while (true) {
             startFunc:
             while (i < Grammar.transitions.get(symbol).size()) {
-                String transition = Grammar.transitions.get(symbol).get(i);
+                Grammar.TokenSequence transition = Grammar.transitions.get(symbol).get(i);
                 if (transition.isEmpty()) {
                     res.add("");
                 }
-                for (int j = 0; j < transition.length(); ++j) {
-                    if (Grammar.terminals.contains(transition.charAt(j))) {
-                        res.add(transition.substring(j, j + 1));
+                for (String s : transition) {
+                    if (Grammar.terminals.contains(s)) {
+                        res.add(s);
                         break;
                     }
-                    if (Grammar.nonterminals.contains(transition.charAt(j))) {
-                        if (first.containsKey(transition.substring(j, j + 1))) {
-                            res.addAll(first.get(transition.substring(j, j + 1)));
-                            if (!first.get(transition.substring(j, j + 1)).contains("")) {
+                    if (Grammar.nonterminals.contains(s)) {
+                        if (first.containsKey(s)) {
+                            res.addAll(first.get(s));
+                            if (!first.get(s).contains("")) {
                                 break;
                             }
                         } else {
@@ -223,7 +226,7 @@ public class Main {
                             functionStates.push(func);
                             res = new HashSet<>();
                             i = 0;
-                            symbol = transition.substring(j, j + 1);
+                            symbol = s;
                             continue startFunc;
                         }
                     }
@@ -243,45 +246,45 @@ public class Main {
 
     private static void calcFollow() {
         Map<String, Set<String>> keepAccount = new HashMap<>();
-        for (Character c : Grammar.nonterminals) {
-            follow.put(String.valueOf(c), new HashSet<>());
-            keepAccount.put(String.valueOf(c), new HashSet<>());
+        for (String c : Grammar.nonterminals) {
+            follow.put(c, new HashSet<>());
+            keepAccount.put(c, new HashSet<>());
         }
         follow.get(Grammar.start).add("$");
 
         while (true) {
             boolean changed = false;
-            for (Character nonterminal : Grammar.nonterminals) {
+            for (String nonterminal : Grammar.nonterminals) {
                 for (var rule : Grammar.transitions.entrySet()) {
-                    for (String rh : rule.getValue()) {
-                        if (!rh.contains(String.valueOf(nonterminal))) {
+                    for (Grammar.TokenSequence rh : rule.getValue()) {
+                        if (!rh.contains(nonterminal)) {
                             continue;
                         }
                         List<Integer> indexes = new ArrayList<>();
-                        for (int i = 0; i < rh.length(); ++i) {
-                            if (rh.charAt(i) == nonterminal)
+                        for (int i = 0; i < rh.size(); ++i) {
+                            if (rh.get(i).equals(nonterminal))
                                 indexes.add(i);
                         }
                         for (Integer index : indexes) {
-                            if (index == rh.length() - 1) {
+                            if (index == rh.size() - 1) {
                                 Set<String> tmp = new HashSet<>(follow.get(rule.getKey()));
-                                changed = follow.get(String.valueOf(nonterminal)).addAll(tmp);
-                                keepAccount.get(String.valueOf(nonterminal)).add(rule.getKey());
+                                changed = follow.get(nonterminal).addAll(tmp);
+                                keepAccount.get(nonterminal).add(rule.getKey());
                                 continue;
                             }
-                            String symbol = rh.substring(index + 1, index + 2);
-                            if (Grammar.terminals.contains(symbol.charAt(0))) {
-                                changed = follow.get(String.valueOf(nonterminal)).add(symbol);
+                            String symbol = rh.get(index + 1);
+                            if (Grammar.terminals.contains(symbol)) {
+                                changed = follow.get(nonterminal).add(symbol);
                             }
                             Set<String> first = first(symbol);
                             if (first.contains("")) {
                                 Set<String> tmp = new HashSet<>(follow.get(rule.getKey()));
-                                changed = follow.get(String.valueOf(nonterminal)).addAll(tmp);
+                                changed = follow.get(nonterminal).addAll(tmp);
                                 first.remove("");
                             }
-                            first.removeAll(follow.get(String.valueOf(nonterminal)));
+                            first.removeAll(follow.get(nonterminal));
                             if (!first.isEmpty()) {
-                                follow.get(String.valueOf(nonterminal)).addAll(first);
+                                follow.get(nonterminal).addAll(first);
                                 changed = true;
                             }
                         }

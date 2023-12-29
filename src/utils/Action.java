@@ -8,7 +8,7 @@ public class Action {
     }
     public ActionType actionType;
     public String from;
-    public String to;
+    public Grammar.TokenSequence to;
     public int index;
 
     @Override
