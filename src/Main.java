@@ -109,11 +109,11 @@ public class Main {
         int currStateIndex = 0;
         Stack<String> stack = new Stack<>();
         stack.push("0");
-        System.out.printf("%30s %50s %40s %n", "Stack", "InputBuffer", "Action");
+        System.out.printf("%60s %50s %40s %n", "Stack", "InputBuffer", "Action");
         while (true) {
             String currentChar = tokens.get(0);
             Action currAction = actionTable.get(currStateIndex).get(currentChar);
-            System.out.printf("%30s %50s ", String.join(" ", stack.subList(Math.max(stack.size() - 4, 0), stack.size() - 1)), String.join(" ", tokens.subList(0, Math.min(5, tokens.size()) - 1)));
+            System.out.printf("%60s %50s ", String.join(" ", stack.subList(Math.max(stack.size() - 7, 0), stack.size() - 1)), String.join(" ", tokens.subList(0, Math.min(5, tokens.size()) - 1)));
             if (currAction == null) {
                 System.out.printf("%40s %n", "Can't parse the text.");
                 break;
@@ -219,25 +219,14 @@ public class Main {
 
     private static final Map<String, Set<String>> first = new HashMap<>();
 
-    static class FunctionState {
-        public Set<String> res;
-        public String symbol;
-        public Integer currTransition;
-    }
-
     private static Set<String> plus(Set<String> l1, Set<String> l2) {
         Set<String> res = new HashSet<>();
         for (String x : l1) {
-            for (String y : l2) {
-                if(x.equals("") && !y.equals(""))
-                    res.add(y);
-                if(!x.equals("") && y.equals(""))
-                    res.add(x);
-                if(x.equals("") && y.equals(""))
-                    res.add("");
-                if(!x.equals("") && !y.equals(""))
-                    res.add(x);
+            if(!x.isEmpty()){
+                res.add(x);
+                continue;
             }
+            res.addAll(l2);
         }
         return res;
     }
@@ -251,7 +240,7 @@ public class Main {
             first.put(nonterminal, new HashSet<>());
             for (int i = 0; i < Grammar.transitions.get(nonterminal).size(); i++) {
                 Grammar.TokenSequence transition = Grammar.transitions.get(nonterminal).get(i);
-                if (Grammar.terminals.contains(transition.get(0)) || transition.get(0).equals("")) {
+                if (Grammar.terminals.contains(transition.get(0)) || transition.get(0).isEmpty()) {
                     first.get(nonterminal).add(transition.get(0));
                 }
             }
@@ -261,61 +250,28 @@ public class Main {
         do {
             changed = false;
             for (String nonterminal : Grammar.nonterminals) {
-                List<Set<String>> result = new ArrayList<>();
+                Set<String> result = new HashSet<>();
                 for (int j = 0; j < Grammar.transitions.get(nonterminal).size(); j++) {
                     Grammar.TokenSequence transition = Grammar.transitions.get(nonterminal).get(j);
-                    Set<String> currentRes;
 
                     if (transition.size() == 1) {
-                        if (Grammar.nonterminals.contains(transition.get(0))) {
-                            currentRes = first.get(transition.get(0));
-                            result.add(new HashSet<>(currentRes));
-                        } else {
-                            currentRes = new HashSet<>();
-                            currentRes.add(transition.get(0));
-                            result.add(currentRes);
-                        }
+                        result.addAll(first.get(transition.get(0)));
                         continue;
                     }
-
-                    int n;
-                    Set<String> l1, l2;
-                    if (Grammar.nonterminals.contains(transition.get(0))) {
-                        l1 = first.get(transition.get(0));
-                    } else {
-                        l1 = new HashSet<>();
-                        l1.add(transition.get(0));
-                    }
-
-                    if (Grammar.nonterminals.contains(transition.get(1))) {
-                        l2 = first.get(transition.get(1));
-                    } else {
-                        l2 = new HashSet<>();
-                        l2.add(transition.get(1));
-                    }
-
-                    currentRes = plus(l1, l2);
-                    n = 2;
-                    while (n < transition.size()) {
-                        if(Grammar.nonterminals.contains(transition.get(n))){
-                            l2 = first.get(transition.get(n));
-                        }else {
-                            l2 = new HashSet<>();
-                            l2.add(transition.get(n));
+                    Set<String> currentRes = plus(first.get(transition.get(0)), first.get(transition.get(1)));
+                    if(currentRes.contains("")) {
+                        for (int n = 2; n < transition.size(); ++n) {
+                            currentRes = plus(currentRes, first.get(transition.get(n)));
+                            if(!first.get(transition.get(n)).contains("")){
+                                break;
+                            }
                         }
-                        currentRes = plus(currentRes, l2);
-                        n++;
                     }
-                    result.add(new HashSet<>(currentRes));
+                    result.addAll(currentRes);
                 }
 
-                Set<String> newFirst = new HashSet<>();
-                for(Set<String> set: result){
-                    newFirst.addAll(set);
-                }
-
-                if(!first.get(nonterminal).equals(newFirst)){
-                    first.put(nonterminal, newFirst);
+                if(!first.get(nonterminal).containsAll(result) || !result.containsAll(first.get(nonterminal))){
+                    first.put(nonterminal, result);
                     changed = true;
                 }
             }
@@ -323,10 +279,9 @@ public class Main {
     }
 
     private static void calcFollow() {
-        Map<String, Set<String>> keepAccount = new HashMap<>();
         for (String c : Grammar.nonterminals) {
             follow.put(c, new HashSet<>());
-            keepAccount.put(c, new HashSet<>());
+
         }
         follow.get(Grammar.start).add("$");
 
@@ -344,38 +299,24 @@ public class Main {
                                 indexes.add(i);
                         }
                         for (Integer index : indexes) {
-                            if (index == rh.size() - 1) {
-                                Set<String> tmp = new HashSet<>(follow.get(rule.getKey()));
-                                changed = follow.get(nonterminal).addAll(tmp);
-                                keepAccount.get(nonterminal).add(rule.getKey());
+                            if (index == rh.size() - 1){
+                                changed |= follow.get(nonterminal).addAll(follow.get(rule.getKey()));
                                 continue;
                             }
-                            String symbol = rh.get(index + 1);
-                            if (Grammar.terminals.contains(symbol)) {
-                                changed = follow.get(nonterminal).add(symbol);
-                            }
-                            Set<String> frst = first.get(symbol);
-                            if (frst.contains("")) {
-                                Set<String> tmp = new HashSet<>(follow.get(rule.getKey()));
-                                changed = follow.get(nonterminal).addAll(tmp);
-                                frst.remove("");
-                            }
-                            frst.removeAll(follow.get(nonterminal));
-                            if (!frst.isEmpty()) {
-                                follow.get(nonterminal).addAll(frst);
-                                changed = true;
-                            }
-                        }
-
-                        if (changed) {
-                            for (String nonTerminal : keepAccount.keySet()) {
-                                if (keepAccount.get(nonTerminal).contains(String.valueOf(nonterminal))) {
-                                    Set<String> tmp = new HashSet<>(follow.get(String.valueOf(nonterminal)));
-                                    follow.get(nonTerminal).addAll(tmp);
+                            Set<String> betaFirst = new HashSet<>();
+                            for(int i = index + 1; i < rh.size(); ++i){
+                                Set<String> tmp = first.get(rh.get(i));
+                                betaFirst.addAll(tmp);
+                                if(!tmp.contains("")){
+                                    break;
                                 }
                             }
-                        }
 
+                            if(betaFirst.remove("")){
+                                changed |= follow.get(nonterminal).addAll(follow.get(rule.getKey()));
+                            }
+                            changed |= follow.get(nonterminal).addAll(betaFirst);
+                        }
                     }
                 }
             }

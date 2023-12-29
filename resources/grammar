@@ -1,8 +1,8 @@
 program->declaration-seq instr-seq
 declaration-seq->declaration SEMI_COLON
-declaration-seq->declaration declaration-seq
+declaration-seq->declaration SEMI_COLON declaration-seq
 instr-seq->instruction SEMI_COLON
-instr-seq->instruction instr-seq
+instr-seq->instruction SEMI_COLON instr-seq
 instr-seq->LBRACKET instr-seq RBRACKET
 declaration->INT var_seq
 declaration->UINT var_seq
@@ -22,9 +22,9 @@ expression->term
 expression->expression ADD term
 expression->expression MINUS term
 term->factor
-term->term MULTIPLY factor
-term->term DIVIDE factor
-term->term MODULUS factor
+term->factor MULTIPLY term
+term->factor DIVIDE term
+term->factor MODULUS term
 factor->VAR_NAME
 factor->NUMBER
 factor->LPARENTHESIS expression RPARENTHESIS
