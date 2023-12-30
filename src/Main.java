@@ -259,14 +259,10 @@ public class Main {
                         continue;
                     }
                     Set<String> currentRes = plus(first.get(transition.get(0)), first.get(transition.get(1)));
-                    if(currentRes.contains("")) {
-                        for (int n = 2; n < transition.size(); ++n) {
-                            currentRes = plus(currentRes, first.get(transition.get(n)));
-                            if(!first.get(transition.get(n)).contains("")){
-                                break;
-                            }
-                        }
+                    for (int n = 2; n < transition.size(); ++n) {
+                        currentRes = plus(currentRes, first.get(transition.get(n)));
                     }
+
                     result.addAll(currentRes);
                 }
 
@@ -308,6 +304,7 @@ public class Main {
                                 Set<String> tmp = first.get(rh.get(i));
                                 betaFirst.addAll(tmp);
                                 if(!tmp.contains("")){
+                                    betaFirst.remove("");
                                     break;
                                 }
                             }

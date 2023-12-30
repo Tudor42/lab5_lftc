@@ -4,12 +4,14 @@ declaration-seq->declaration SEMI_COLON declaration-seq
 instr-seq->instruction SEMI_COLON
 instr-seq->instruction SEMI_COLON instr-seq
 instr-seq->LBRACKET instr-seq RBRACKET
-declaration->INT var_seq
-declaration->UINT var_seq
-declaration->FLOAT var_seq
-declaration->STRUCT var_seq
-var_seq->VAR_NAME
-var_seq->VAR_NAME COMMA var_seq
+declaration->type VAR_NAME
+declaration->type VAR_NAME var_seq
+var_seq->COMMA VAR_NAME
+var_seq->COMMA VAR_NAME var_seq
+type->INT
+type->UINT
+type->FLOAT
+type->STRUCT
 instruction->read
 instruction->write
 instruction->assignment
