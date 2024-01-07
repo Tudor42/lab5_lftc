@@ -32,8 +32,8 @@ public enum TokenType {
     SCAN("scan", true),
     WHILE("while", true),
     IF("if", true),
-    VAR_NAME("[a-z][a-z0-9]{0,7}", true),
-    NUMBER("([1-9][0-9]*\\.?[0-9]*|0x[0-9a-fA-F]+\\.?[0-9a-fA-F]*|0[0-7]+\\.?[0-7]*|0b[01]+\\.?[01]*|0)", true);
+    VAR_NAME("ID|[a-z][a-z0-9]{0,7}", true),
+    NUMBER("CONST|([1-9][0-9]*\\.?[0-9]*|0x[0-9a-fA-F]+\\.?[0-9a-fA-F]*|0[0-7]+\\.?[0-7]*|0b[01]+\\.?[01]*|0)", true);
     private String regex = "";
 
 

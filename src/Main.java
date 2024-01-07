@@ -15,6 +15,70 @@ public class Main {
     static List<String> tokens = new ArrayList<>();
     private static final Map<String, Set<String>> follow = new HashMap<>();
 
+    private static void readFip(){
+        Map<String, String> atoms = new HashMap<>();
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader("resources/fip"))) {
+            String line;
+            while ((line = bufferedReader.readLine()) != null && !line.equals("FIP")) {
+                if(line.equals("ATOMI")){
+                    continue;
+                }
+                String[] entry = line.split(" ");
+                atoms.put(entry[0], entry[1]);
+            }
+
+            while ((line = bufferedReader.readLine()) != null) {
+                if(line.equals("FIP")){
+                    continue;
+                }
+                
+                String[] entry = line.split(" ");
+                Matcher matcher = Pattern.compile("").matcher(atoms.get(entry[0]));
+                while (!matcher.hitEnd()) {
+                    for (TokenType t : TokenType.values()) {
+                        String matched = t.match(matcher);
+                        if (matched != null) {
+                            tokens.add(t.toString());
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void readSrc(){
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader("resources/code"))) {
+            String line;
+            int lineNr = 0;
+            while ((line = bufferedReader.readLine()) != null) {
+                ++lineNr;
+
+                if (line.isBlank()) {
+                    continue;
+                }
+                Matcher matcher = Pattern.compile("").matcher(line.trim());
+                nextToken:
+                while (!matcher.hitEnd()) {
+                    for (TokenType t : TokenType.values()) {
+                        String matched = t.match(matcher);
+                        if (matched != null) {
+                            tokens.add(t.toString());
+                            continue nextToken;
+                        }
+                    }
+                    throw new InvalidTokenException(line, lineNr, matcher.regionStart());
+                }
+            }
+        } catch (InvalidTokenException e) {
+            System.out.println(e.getMessage());
+            throw new RuntimeException();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
     public static void main(String[] args) throws InvalidTokenException, IOException {
         Grammar.parse_file("grammar");
         Grammar.TokenSequence tokenSequence = new Grammar.TokenSequence();
@@ -69,32 +133,7 @@ public class Main {
             goTo.add(goToLine);
         }
 
-        try (BufferedReader bufferedReader = new BufferedReader(new FileReader("resources/code"))) {
-            String line;
-            int lineNr = 0;
-            while ((line = bufferedReader.readLine()) != null) {
-                ++lineNr;
-
-                if (line.isBlank()) {
-                    continue;
-                }
-                Matcher matcher = Pattern.compile("").matcher(line.trim());
-                nextToken:
-                while (!matcher.hitEnd()) {
-                    for (TokenType t : TokenType.values()) {
-                        String matched = t.match(matcher);
-                        if (matched != null) {
-                            tokens.add(t.toString());
-                            continue nextToken;
-                        }
-                    }
-                    throw new InvalidTokenException(line, lineNr, matcher.regionStart());
-                }
-            }
-        } catch (InvalidTokenException e) {
-            System.out.println(e.getMessage());
-            throw new RuntimeException();
-        }
+        readFip();
         tokens.add("$");
 
         parse(actionTable, goTo);
